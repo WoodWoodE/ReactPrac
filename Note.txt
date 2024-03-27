@@ -98,3 +98,5 @@ useMemo를 먼저 import하고 컴포넌트 내부에 useMemo를 호출해주고
 
 ------
 
+
+10.3) React.memo와 컴포넌트 렌더링 최적화
