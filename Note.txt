@@ -168,5 +168,55 @@ useCallback()내에 익명함수로 생성해서 내부 코드를 복사해서 �
 모든것을 적용하면 안되고 꼭 최적화가 필요할것 같은 연산, 함수, 컴포넌트에만 적용하는게 좋다. 예를 들어 Header컴포넌트처럼 매우 단순한 컴포넌트처럼 memo메서드를 적용했는데 이 memo메서드도 연산이 필요로 하는 메서드이다(props의 값을 비교한다거나, 메모리에 컴포넌트 값을 저장한다던가). 그런데 이렇게 최적화하는 컴포넌트가 별일도 하지 않는 컴포넌트라면 그냥 다시 리렌더링하는게 더 빠를수도 있다. 그렇기에 보통은 이런 사소한 컴포넌트를 모두 최적화하지 않고 대신 Todoitem컴포넌트처럼 유저의 행위에 따라 컴포넌트가 매우 많아질 수 있는 컴포넌트던가, 함수들을 매우 많이 가지고 있어 코드가 무거운 컴포넌트라면 그런 컴포넌트 한정으로 최적화를 하는 것을 권장한다.
 
 최적화는 결국 꼭해야할것같은 애들만 해주는게 좋고 기능구현이 먼저고 최적화는 가장 마지막에 해라.
+----
 
- 
+섹션11. Context
+
+11.1) Context란?
+
+컴포넌트간의 데이터 전달을 훨씬 편하게 만들어주는 리액트 context에 대해서 알아보자.
+React Context는 props를 대체해서 컴포넌트간의 데이터를 전달할 수 있게 해주는 또하나의 방법으로 기존의 props가 갖고 있던 단점을 해결하기 위해 존재한다. 먼저 props는 부모에서 자식으로만 값을 전달할 수 있었다. 그렇기에 데이터를 컴포넌트의 계층구조상에서 한단계 아래에 전달하는 것은 아무런 문제가 없었다. 그러나 컴포넌트의 계층구조가 두단계 이상 깊어지면 App -> child A -> child B 로 전달하지 않고 App -> child B로 바로 전달하는 것은 불가능 하다. 위에 말했듯이 props란 부모에서 자식으로만 전달이 가능하기 때문이다. 이럴땐 어쩔 수 없이 중간에 child A가 중간다리 역할을 해줘야만 한다. 이전에 Todo List 앱을 만들때도 수정, 삭제를 할때 onUpdate나 onDelete같은 함수들을 todoitem컴포넌트에게 전달했어야 했는데 App컴포넌트와 Todoitem컴포넌트는 부모, 자식 관계가 아니라서 중간에 List컴포넌트가 다리역할을 해줘야한 했었다. 그래서 우리가 props를 이용하게 되면 어쩔수 없이 중간 다리를 거쳐서 전달해야 하는 경우가 많은데 이것 물론 좋은 방법은 아니다. 물론 지금은 List컴포넌트하나기에 문제가 크지 않을 수 있으나 만약 서비스의 규모가 커지게 되면서 App컴포넌트와 Todoitem컴포넌트 사이에 매우 많은 컴포넌트가 생성이 된다면 상상하기 힘들 만큼 컴포넌트를 거쳐서 데이터를 전달해야 하기에 props의 이름이 중간에 바뀌는 경우가 생기면 모든 컴포넌트를 뒤져가면서 찾아야한다. 이런 상황을 props가 드릴처럼 땅을 파고 내려가는 것같다고 해서 props drilling이라고 한다. 이것을 해결하는 방법이 react의 context이다.
+
+context는 데이터들을 보관하는 데이터 보관소 역할을하는 객체이다. 그래서 context를 생성한 다음에 원래 자식 컴포넌트에게 전달하던 데이터, 함수들을 context에 보관해두면 이제 props에 보관하지 않고 direct하게 context를 통해 필요한 data를 공급해줄 수있다. 그렇게 하면서 props drilling을 해결할 수있게 된다. 그리고 이런 context는 여러개 생성하는 것도 당연히 가능하다. 
+
+다음 섹션도 동일하게 Todo리스트 프로젝트를 통해서 사용할것이다.
+-----
+
+11.2) Context 사용하기
+
+Context를 이용해서 Todo List의 props drilling을 해결해보자.
+Todo List를 보면 onUpdate, onDelete 함수는 지금 현재 Todoitem컴포넌트에게 전달이 되어야 하기 때문에 일단 App컴포넌트의 return문 안에서 List컴포넌트에게 전달이 되고 또 List컴포넌트는 Todoitem컴포넌트에게 전달을 하고 있기에 결론적으로 props drilling이 발생하고 있다고 할 수 있다. 그래서 지금 발생한 props drilling을 해결해보기 위해서 context를 사용해보자면, 먼저 App.jsx파일에서 새로운 context를 생성하기 위해 import문에 createContext를 react에서 불러오고 컴포넌트 밖에, reducer함수 아래에 const todoContext에 우리가 불러온 createContext메서드를 호출해서 넣어주자. 이렇게 해서 새로운 context객체를 만들었는데 이 context는 보통 컴포넌트의 외부에 선언을 하게 된다 . 만약 App컴포넌트 안에 선언을 해주면 문제가 발생하는 것은 아니지만 App컴포넌트가 리렌더링이 될 때마다 계속해서 해당 코드를 실행하게되기에 계속 새로운 context를 생성하게 된다. 그런데 context의 역할은 데이터를 하위 컴포넌트에게 공급만 해주면 되기에 궂이 App컴포넌트가 리랜더링 될 때마다 다시 생성될 필요는 없다. 그렇기에 정말 특별한 상황이 아니면 보통은 컨텍스트 외부에 선언을 한다.
+
+그럼 이 context내부에는 어떤 값이 있을지 모르기 때문에 console.log로 todoContext를 console에 출력해보자.
+그러면 방금 생성한 context객체가 보이는데 굉장이 여러개의 properties를 갖는 객체라는 것을 알 수 있는데 그 대부분은 내부적인 동작을 위해 존재하기 때문에 모든 properties에 대해서 알 필요는 없다. 대신 provider라는 property만 잘 알아두면 된다. provider는 context가 공급할 데이터를 설정하거나 context에 데이터를 공급받을 컴포넌트들을 설정하기 위해서 우리가 사용하는 property인데 이건 사실 컴포넌트이다. 그래서 우리가 <todoContext.Provider/>로 렌더링도 가능하다. 사용법은 현재 props를 받고 있는 컴포넌트를 감싸서 선언하면 된다. 그러면 Provider컴포넌트 아래에 있는 모든컴포넌트들은 todoContext에 데이터를 공급받을 수 있는데, 이때 공급받을 데이터를 어떻게 설정하느냐면 Provider컴포넌트에게 value속성으로 전달해주면 된다. 우리는 todos, onCreate, onUpdate, onDelete를 전달할 것이기에 객체 형태로 전달해주자.
+이제 Provider컴포넌트의 모든 자식, 모든 자손 컴포넌트들을 value 속성으로 설정한 Context가 공급하는 값들을 direct로 꺼내와서 언제든지 사용할 수 있는 상태가 된다. 
+
+그렇기에 Editor컴포넌트와 List컴포넌트를 Provider컴포넌트로 감싸도록 설정해주면 이 안에 있는 컴포넌트들이 데이터를 공급받아 이용할 수 있다고 보면 된다. 개발자도구의 components를 들어가보면 계층구조를 살펴보면 context.Provider가 계층구조에 추가된 것을 볼 수 있고 Editor컴포넌트와 List컴포넌트를 감싸도록 구성된 것을 볼 수 있다. 그리고 이때 Provider컴포넌트를 클릭해서 어떤 데이터를 갖고 있는지 확인해보면 value로써 공급한 데이터들을 확인할 수 있다.
+이제 데이터를 공급하는것은 모두 완료가 되었고 이제 꺼내서 사용하는 방법을 알아보자.
+Editor컴포넌트부터 Context로 부터 제공받는 값을 이용할 수 있도록 바꿔보자.
+이 컴포넌트에게 props로 전달하던 onCreate함수는 context를 통해서 전달받기에 지워줘도 된다(태그 내부에 속성으로 전달하던 값지우기).
+그리고 Editor컴포넌트로 들어가서 props로 데이터를 받지않고 context로 데이터를 값을 꺼내오도록 설정해야하는데 그럴려면 새로운 리액트 Hook인 useContext hook을 불러와야한다. 그리고 컴포넌트 안에서 const data = useContext()를 호출하고 인수로는 데이터를 불러오고자 하는 context를 직접 넣어주면 되는데 우리가 데이터를 불러오고자 하는 context는 App.jsx에서 선언해둔 todoContext인데 이걸 export하고 있지 않기에 Editor.jsx에 가져올 수 없기에 일단은 App.jsx에서 const todoContext = .. 이 부분을 export const todoContext = ..으로 변경해주자. 그리고 나서 Editor.jsx에서 import문으로 todoContext를 App.jsx로 부터 불러오고 이걸 useContext의 인수로 전달하면 된다. 그러면 useContext라는 리액트 Hook은 인수로 전달한 context로부터 공급된 데이터를 반환해주는 함수이다. 그렇기에 data라는 변수에는 todoContext가 전달한 값들이 존재할 것이다. 이걸 console.log를 통해서 출력을 해보면 App컴포넌트에서 Provider에게 value속성으로 전달해줫던 props값들이 다 Editor컴포넌트로 잘 공급되는 것을 볼 수 있다. 이제는 data로 불러오지 말고 구조분해 할당으로 [onCreate]를 받아와보자. 
+
+동일하게 다른 컴포넌트도 context로 값을 받아올 수 있도록 해보자(받아올 때는 필요한것만 구조분해할당하여 사용하자).
+
+근데 이렇게 보면 memo로 설정했던 최적화가 풀린것을 볼 수 있다. 다음에 이걸 해결해보자. 
+
+기본적으로 context는 이렇게 사용한다고 알아두고 가자.
+
+------
+
+11.3) Context 분리하기
+
+context적용 이후에 최적화가 풀리는 이유와 해결법을 알아보자
+사실 Provider도 컴포넌트이기에 App컴포넌트로 부터 value 속성으로 제공받는 객체가 바뀌게 되면 당연히 리랜더링이 발생한다. 그런데 이 객체가 바뀌는 이유는 todos state가 변경되기에 객체를 다시 생성해서 넘겨 주기 때문임. 그래서 이 Provider컴포넌트도 리렌더링이 발생하기에 하위 컴포넌트 입장에선 부모 컴포넌트가 리렌더링 되는 상황이기에 자식컴포넌트도 리렌더링되게 된다. 그런데 이전에 최적화를 진행하기 위해서 자신이 받는 props가 바뀌지 않으면 리렌더링이 발생하지 않도록 했는데 지금은 왜 리렌더링이 발생하는 것일까? 그 이유는 새로운 todo를 추가하거나 기존 todo를 추가, 삭제하게 되면 App컴포넌트의 todos state가 변경이 되어 App컴포넌트가 리렌더링이 되게 될텐데 그때 이 Provider컴포넌트에게 value 속성으로 전달하는 이 객체 자체가 다시생성이 되기 때문임. 그렇기에 Todoitem컴포넌트에서 useContext를 호출해서 todoContext로부터 불러온 객체 자체가 다시 생성이 되기에 Todoitem컴포넌트가 리렌더링이 발생하게 되는 것이다. 왜냐면 memo를 적용했더라도 useContext로 부터 불러온 값이 변경이 되면 props가 변경된것과 동일하게 리렌더링이 발생되기 때문임. 이걸 해결하는 방법은 무엇일까? 이 문제는 todoContext를 두개의 context로 분리해서 해결할 수 있다. 그래서 todos처럼 state임으로 변경될수 있는 값들은 todoStateContext를 만들어 새로운 Context로 공급을 하고 반대로 onCreate나 onUpdate나 onDelete같은 변경되지 않는 함수들은 todoDispatchContext라고 새로 만들어서 분리해서 공급해주면 된다. 
+이렇게 해주면 context가 두개로 분리가 되었기에 todos state가 변경이 되더라도 todoList컴포넌트만 불러다 쓰기에 다른 컴포넌트들은 리렌더링 되지 않을 것이고 todo List컴포넌트만 리렌더링 될것이다. 물론 부모컴포넌트가 리렌더링 되면 모두 리렌더링되는것은 맞으나 memo를 적용했기에 리렌더링 되지 않을 수 있는 것이다. 
+
+기존 context를 지우고 export const todoStateContext = createContext로 만들고 동일하게 export const todoDispatchContext = createContext로 만들어주자. 그리고 이제 Provider도 전체를 다보내지 않기에 todoContext.Provider를 지워주고 먼저 todoStateContext.Provider를 먼저 렌더링하도록 설정하고 value로 todos를 전달해주자. 그리고 그 아래에 todoDispatchContext.Provider를 두번째로 묶도록 설정하고 value속성에 onCreate, onUpdate, onDelete를 전달해주자. 그런데 이때 dispatchContext에 value로 전달하는 객체도 App컴포넌트의 todos state가 변경되면서 리렌더링이 발생하면 새롭게 다시 생성할 것이다 그래서 다시는 생성하지 않도록 useMemo를 사용해주자.
+그래서 먼저 App컴포넌트의 최상단에 useMemo를 불러오고 return문위에(외부) 세개의 함수를 다시 생성되지 않도록만들 것이기에 memoizedDispatch로 생성해서 useMemo를 호출하고 callback함수로 객체를 return할 것인데 onCreate와 onUpdate와 onDelete를 가진 객체를 return해주자. 그리고 두번째 인수 deps로는 [] 빈배열을 넣어서 마운트 이후에 다시는 생성되지 않도록 설정하자. 그러면 이제부터 DispatchContext가 공급하는 값은 절대로 바뀌지 않을 것이다. 
+
+이제 각 컴포넌트로 들어가서 Context에서 데이터를 공급받아 사용해주자.
+
+주의할 점은 이전엔 객체로 하나로 묶어서 공급을 했었는데 todoStateContext는 value로 그냥 todos를 전달했기에 객체가 아니기에 구조분해 할당이 아니라 그냥 받아서 사용해야 한다.
+
+----
+
